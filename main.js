@@ -1,93 +1,99 @@
 import * as THREE from './three.js/build/three.module.js';
 
-const canvas = document.querySelector('#canvas');
 
-const renderer = new THREE.WebGLRenderer({ canvas });
+import BasicColorShader from './shaders/BasicColorShader.js';
 
-const uniforms = {
-    color: { value: new THREE.Vector3(1, 0, 0) }
-};
+(async () => {
+    const canvas = document.querySelector('#canvas');
 
-const fragmentShader = document.getElementById('basic-color-shader').text;
+    const renderer = new THREE.WebGLRenderer({ canvas });
 
-const fov = 75;
-const aspect = 2;
-const near = 0.1;
-const far = 5;
-const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+    const uniforms = {
+        color: { value: new THREE.Vector3(1, 0, 0) }
+    };
 
-camera.position.z = 2;
+    const basicColorFragmentShader = (await (new BasicColorShader()).init()).getSource();
+    
+    const materials = {
+        red: new THREE.ShaderMaterial({ fragmentShader: basicColorFragmentShader, uniforms: { ...uniforms, color: { value: new THREE.Vector3(1, 0, 0) } } }),
+        green: new THREE.ShaderMaterial({ fragmentShader: basicColorFragmentShader, uniforms: { ...uniforms, color: { value: new THREE.Vector3(0, 1, 0) } } }),
+        blue: new THREE.ShaderMaterial({ fragmentShader: basicColorFragmentShader, uniforms: { ...uniforms, color: { value: new THREE.Vector3(0, 0, 1) } } })
+    };
 
-const scene = new THREE.Scene();
+    const fov = 75;
+    const aspect = 2;
+    const near = 0.1;
+    const far = 5;
+    const camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
 
-function makeInstance(geometry, color, x = 0) {
+    camera.position.z = 2;
 
-    const material = new THREE.ShaderMaterial({ fragmentShader, uniforms: { ...uniforms, color: { value: color } } });
+    const scene = new THREE.Scene();
 
-    const cube = new THREE.Mesh(geometry, material);
+    function makeCubeInstance(size, material, x = 0) {
 
-    scene.add(cube);
+        const geometry = new THREE.BoxGeometry(size, size, size);
 
-    cube.position.x = x;
+        const cube = new THREE.Mesh(geometry, material);
 
-    return cube;
-}
+        scene.add(cube);
 
-const boxWidth = 1;
-const boxHeight = 1;
-const boxDepth = 1;
-const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+        cube.position.x = x;
 
-const cubes = [
-    makeInstance(geometry, new THREE.Vector3(1, 0, 0), 0),
-    makeInstance(geometry, new THREE.Vector3(0, 1, 0), -2),
-    makeInstance(geometry, new THREE.Vector3(0, 0, 1), 2),
-];
-
-const lightColor = 0xFFFFFF;
-const intensity = 1;
-const light = new THREE.DirectionalLight(lightColor, intensity);
-
-light.position.set(-1, 2, 4);
-
-scene.add(light);
-
-function resizeRenderToDisplaySize(renderer) {
-    const canvas = renderer.domElement;
-    const pixelRatio = window.devicePixelRatio;
-    const width = canvas.clientWidth * pixelRatio | 0;
-    const height = canvas.clientHeight * pixelRatio | 0;
-
-    const needResize = canvas.width !== width || canvas.height !== height;
-
-    if(needResize) {
-        renderer.setSize(width, height, false);
+        return cube;
     }
 
-    return needResize;
-}
+    const cubes = [
+        makeCubeInstance(1, materials.red, 0),
+        makeCubeInstance(1, materials.green, -2),
+        makeCubeInstance(1, materials.blue, 2),
+    ];
 
-function render(time) {
-    time *= 0.0001;
+    const lightColor = 0xFFFFFF;
+    const intensity = 1;
+    const light = new THREE.DirectionalLight(lightColor, intensity);
 
-    const canvas = renderer.domElement;
+    light.position.set(-1, 2, 4);
 
-    if(resizeRenderToDisplaySize(renderer)) {
-        camera.aspect = canvas.clientWidth / canvas.clientHeight;
-        camera.updateProjectionMatrix();
+    scene.add(light);
+
+    function resizeRenderToDisplaySize(renderer) {
+        const canvas = renderer.domElement;
+        const pixelRatio = window.devicePixelRatio;
+        const width = canvas.clientWidth * pixelRatio | 0;
+        const height = canvas.clientHeight * pixelRatio | 0;
+
+        const needResize = canvas.width !== width || canvas.height !== height;
+
+        if(needResize) {
+            renderer.setSize(width, height, false);
+        }
+
+        return needResize;
     }
 
-    cubes.forEach((cube, index) => {
-        const speed = 10 + index * 0.1;
-        const rot = time * speed;
+    function render(time) {
+        time *= 0.0001;
 
-        cube.rotation.x = rot;
-        cube.rotation.y = rot;
-    });
+        const canvas = renderer.domElement;
 
-    renderer.render(scene, camera);
+        if(resizeRenderToDisplaySize(renderer)) {
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+        }
+
+        cubes.forEach((cube, index) => {
+            const speed = 10 + index * 0.1;
+            const rot = time * speed;
+
+            cube.rotation.x = rot;
+            cube.rotation.y = rot;
+        });
+
+        renderer.render(scene, camera);
+
+        requestAnimationFrame(render);
+    }
 
     requestAnimationFrame(render);
-}
-
-requestAnimationFrame(render);
+})();
